@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Succession - Standalone</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- docx and FileSaver for Word Export -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .case-card:hover { transform: translateY(-2px); transition: all 0.2s ease; }
+    </style>
+<script src="/_aistudio-iframe.js"></script><script>
+        window.STATIC_CONFIG = {"projectId":"gen-lang-client-0300163461","appId":"1:152672273998:web:5c931be8f7f065f0a6e51f","apiKey":"AIzaSyBbTCmThFhd6r5SNUxIfOlSrnFvr_l0liE","authDomain":"gen-lang-client-0300163461.firebaseapp.com","firestoreDatabaseId":"ai-studio-dd0fba6b-9ad2-42f3-8ce9-ec8c839c2c71","storageBucket":"gen-lang-client-0300163461.firebasestorage.app","messagingSenderId":"152672273998","measurementId":""};
+        console.log('Firebase configuration injected for live data fetching.');
+      </script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+    <div id="app" class="max-w-6xl mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">Succession</h1>
+                <p class="text-sm text-gray-500 mt-1">cases from the syllabus of AD - JMC Law</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <div id="adminActions" class="hidden flex items-center gap-2">
+                    <button id="importBtn" class="flex items-center gap-2 px-3 py-2 bg-black text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all">
+                        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import
+                    </button>
+                    <button id="clearBtn" class="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-bold hover:bg-red-100 transition-all">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="authStatus" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2"></span>
+                    <button id="exportDocsBtn" class="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl text-xs font-bold hover:bg-blue-100 transition-all">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Export Docs
+                    </button>
+                    <button id="loginBtn" class="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all">
+                        <i data-lucide="log-in" class="w-3.5 h-3.5"></i> Admin Login
+                    </button>
+                    <button id="logoutBtn" class="hidden flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Logout
+                    </button>
+                </div>
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"></i>
+                    <input 
+                        type="text" 
+                        id="searchInput"
+                        placeholder="Search cases..."
+                        class="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/5 w-48 md:w-64"
+                    >
+                </div>
+            </div>
+        </header>
+
+        <input type="file" id="fileInput" class="hidden" accept=".json,.csv">
+
+        <!-- Custom Notification -->
+        <div id="notification" class="fixed bottom-4 right-4 z-50 transform translate-y-20 opacity-0 transition-all duration-300">
+            <div class="bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-white/10">
+                <span id="notificationText" class="text-sm font-medium"></span>
+            </div>
+        </div>
+
+        <!-- Custom Confirmation Modal -->
+        <div id="confirmModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-900 mb-2">Are you sure?</h3>
+                <p id="confirmMessage" class="text-sm text-gray-500 mb-6"></p>
+                <div class="flex gap-3">
+                    <button id="confirmCancel" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all">Cancel</button>
+                    <button id="confirmOk" class="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-all">Yes, Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Filter by Topic / Article / Provision</label>
+                <select id="provisionFilter" class="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm appearance-none cursor-pointer">
+                    <option value="All Provisions">All Provisions</option>
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sort by</label>
+                <select id="sortOrder" class="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm appearance-none cursor-pointer">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="alphabetical">Case Name (A-Z)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div id="loading" class="flex flex-col items-center justify-center py-20">
+            <div class="w-8 h-8 border-4 border-gray-200 border-t-black rounded-full animate-spin mb-4"></div>
+            <p class="text-sm text-gray-500">Connecting to database...</p>
+        </div>
+
+        <div id="caseListContainer" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50/50 border-b border-gray-100">
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 w-16">#</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Case Name & Citation</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Provision / Topic / Article</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">SC Ruling</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">Simple Explanation</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="caseList" class="divide-y divide-gray-100">
+                        <!-- Cases will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <p class="text-xs text-gray-500">
+                        Showing <span id="paginationInfo" class="font-medium text-gray-900">0 to 0 of 0</span> results
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <label for="rowsPerPage" class="text-xs text-gray-500">Rows:</label>
+                        <select id="rowsPerPage" class="text-xs border border-gray-200 rounded-lg bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-black/5">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="prevPage" class="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    <div id="pageNumbers" class="flex items-center gap-1">
+                        <!-- Page numbers injected here -->
+                    </div>
+                    <button id="nextPage" class="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="noResults" class="hidden text-center py-20">
+            <p class="text-gray-500">No cases found matching your criteria.</p>
+        </div>
+    </div>
+
+    <!-- Case Detail Modal -->
+    <div id="caseModal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4 md:p-8 bg-black/40 backdrop-blur-sm">
+        <div class="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div class="flex-1 mr-4">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Case Details & Decisions</span>
+                    <h2 id="modalTitle" class="text-xl font-bold text-gray-900"></h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div id="modalActionButtons" class="flex items-center gap-2">
+                        <!-- Buttons will be injected here -->
+                    </div>
+                    <button id="modalClose" class="p-2 rounded-full hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-all">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="modalContent" class="overflow-y-auto p-8 space-y-8">
+                <!-- Modal content will be injected here -->
+            </div>
+
+            <div id="modalFooter" class="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <!-- Footer buttons will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy, writeBatch, doc, deleteDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            projectId: "gen-lang-client-0585193247",
+            appId: "1:322011309302:web:a54588bec4ea267ba338d7",
+            apiKey: "AIzaSyAdcJaRm_clIJr-EAASeTD39mCg2O6zdpQ",
+            authDomain: "gen-lang-client-0585193247.firebaseapp.com",
+            firestoreDatabaseId: "ai-studio-526651e0-07fc-46a3-afc0-733e2988672f",
+            storageBucket: "gen-lang-client-0585193247.firebasestorage.app",
+            messagingSenderId: "322011309302"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        console.log("Libraries check:", { 
+            docx: !!window.docx, 
+            docxGlobal: typeof docx !== 'undefined',
+            saveAs: !!window.saveAs 
+        });
+
+        let allCases = [];
+        let currentUser = null;
+
+        const caseListEl = document.getElementById('caseList');
+        const caseListContainer = document.getElementById('caseListContainer');
+        const loadingEl = document.getElementById('loading');
+        const noResultsEl = document.getElementById('noResults');
+        const searchInput = document.getElementById('searchInput');
+        const provisionFilter = document.getElementById('provisionFilter');
+        const sortOrder = document.getElementById('sortOrder');
+        
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const adminActions = document.getElementById('adminActions');
+        const importBtn = document.getElementById('importBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportDocsBtn = document.getElementById('exportDocsBtn');
+        const fileInput = document.getElementById('fileInput');
+
+        const authStatus = document.getElementById('authStatus');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notificationText');
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmOk = document.getElementById('confirmOk');
+        const confirmCancel = document.getElementById('confirmCancel');
+
+        const caseModal = document.getElementById('caseModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        const modalClose = document.getElementById('modalClose');
+        const modalActionButtons = document.getElementById('modalActionButtons');
+        const modalFooter = document.getElementById('modalFooter');
+
+        let selectedCase = null;
+        let isEditing = false;
+        let editedCase = null;
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let filteredCount = 0;
+
+        function showNotification(message, type = 'info') {
+            notificationText.textContent = message;
+            notification.classList.remove('translate-y-20', 'opacity-0');
+            notification.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                notification.classList.add('translate-y-20', 'opacity-0');
+                notification.classList.remove('translate-y-0', 'opacity-100');
+            }, 5000);
+        }
+
+        function showConfirm(message, onConfirm) {
+            confirmMessage.textContent = message;
+            confirmModal.classList.remove('hidden');
+            
+            const handleOk = () => {
+                onConfirm();
+                close();
+            };
+            const close = () => {
+                confirmModal.classList.add('hidden');
+                confirmOk.removeEventListener('click', handleOk);
+                confirmCancel.removeEventListener('click', close);
+            };
+            
+            confirmOk.addEventListener('click', handleOk);
+            confirmCancel.addEventListener('click', close);
+        }
+
+        // Auth Listener
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const isAuthorized = user && user.email === 'ssaclausolaw@gmail.com';
+            
+            if (user) {
+                authStatus.textContent = `Logged in as ${user.displayName || user.email}`;
+                loginBtn.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
+                
+                if (isAuthorized) {
+                    adminActions.classList.remove('hidden');
+                } else {
+                    adminActions.classList.add('hidden');
+                }
+            } else {
+                authStatus.textContent = '';
+                loginBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                adminActions.classList.add('hidden');
+            }
+        });
+
+        // Login/Logout
+        loginBtn.addEventListener('click', async () => {
+            try {
+                authStatus.textContent = 'Logging in...';
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                authStatus.textContent = 'Login failed';
+                console.error("Login error:", error);
+                showNotification("Login failed: " + error.message + "\n\nNote: If you are running this file locally (file://), Google Login may be restricted by Firebase. Try hosting it on a web server or using the main app.");
+            }
+        });
+        logoutBtn.addEventListener('click', () => signOut(auth));
+
+        // Initial fetch
+        const q = collection(db, "cases");
+        onSnapshot(q, (snapshot) => {
+            allCases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log("Fetched cases:", allCases.length);
+            updateProvisions();
+            render();
+            loadingEl.classList.add('hidden');
+            caseListContainer.classList.remove('hidden');
+        }, (error) => {
+            console.error("Firestore error:", error);
+            loadingEl.innerHTML = `<p class="text-red-500 font-medium">Error connecting to database. Please check your connection.</p>`;
+        });
+
+        function updateProvisions() {
+            const provisionsSet = new Set();
+            allCases.forEach(c => {
+                if (c.provisionTopic) provisionsSet.add(c.provisionTopic);
+                if (c.articleCited) provisionsSet.add(c.articleCited);
+                if (c.provision) provisionsSet.add(c.provision);
+                if (c.provisions) provisionsSet.add(c.provisions);
+            });
+            const provisions = ['All Provisions', ...Array.from(provisionsSet).sort()];
+            provisionFilter.innerHTML = provisions.map(p => `<option value="${p}">${p}</option>`).join('');
+        }
+
+        // Library-less Word Export Fallback (Workaround for docx library loading issues)
+        function exportToWordLibraryLess(cases, filename) {
+            console.log("Using library-less export fallback");
+            showNotification('Using legacy export mode...', 'info');
+            
+            let html = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset='utf-8'>
+                    <style>
+                        body { font-family: "Segoe UI", Arial, sans-serif; }
+                        table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+                        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; font-size: 10pt; vertical-align: top; }
+                        th { background-color: #f8f9fa; font-weight: bold; color: #333; width: 30%; }
+                        h2 { color: #1a1a1a; border-bottom: 2px solid #000; padding-bottom: 5px; page-break-before: always; }
+                        .first-h2 { page-break-before: auto !important; }
+                        .meta { font-size: 8pt; color: #666; margin-bottom: 20px; text-align: center; }
+                        h1 { text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Succession Export</h1>
+                    <p class="meta">Exported on: ${new Date().toLocaleString()}</p>
+            `;
+            
+            cases.forEach((item, index) => {
+                const combinedTopic = [item.provisionTopic, item.articleCited, item.provision]
+                    .filter(val => val && String(val).trim() !== '')
+                    .map(val => String(val).trim())
+                    .join(' | ') || '—';
+
+                html += `
+                    <h2 class="${index === 0 ? 'first-h2' : ''}">${item.caseNameCitation || item.title || 'Untitled Case'}</h2>
+                    <table>
+                        <tr><th>Petitioner</th><td>${item.petitioner || '—'}</td></tr>
+                        <tr><th>Respondent</th><td>${item.respondent || '—'}</td></tr>
+                        <tr><th>Provisions</th><td>${item.provisions || '—'}</td></tr>
+                        <tr><th>Topic & Article</th><td>${combinedTopic}</td></tr>
+                        <tr><th>Facts</th><td>${item.facts || '—'}</td></tr>
+                        <tr><th>Issue (Succession)</th><td>${item.issueSuccession || item.issues || '—'}</td></tr>
+                        <tr><th>RTC Decision</th><td>${item.rtcDecision || '—'}</td></tr>
+                        <tr><th>CA Decision</th><td>${item.caDecision || '—'}</td></tr>
+                        <tr><th>SC Ruling</th><td>${item.scRuling || '—'}</td></tr>
+                        <tr><th>Rationale / Basis</th><td>${item.rationaleBasis || '—'}</td></tr>
+                        <tr><th>Simple Explanation</th><td>${item.simpleExplanation || '—'}</td></tr>
+                        <tr><th>Full Digest</th><td>${item.fullDigest || item.digest || '—'}</td></tr>
+                    </table>
+                `;
+            });
+            
+            html += `
+                </body>
+                </html>
+            `;
+            
+            try {
+                const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+                if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+                    window.navigator.msSaveOrOpenBlob(blob, filename + '.doc');
+                } else {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename + '.doc';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
+                showNotification('Export successful (Legacy Mode)', 'success');
+            } catch (err) {
+                console.error("Legacy export failed:", err);
+                showNotification('Export failed. Please try a different browser.', 'error');
+            }
+        }
+
+        exportDocsBtn.addEventListener('click', async () => {
+            if (allCases.length === 0) return showNotification('No cases to export.');
+            
+            const filename = `Legal_Cases_Export_${new Date().toISOString().split('T')[0]}`;
+            const docxLib = window.docx || (typeof docx !== 'undefined' ? docx : null);
+
+            if (!docxLib) {
+                console.warn("docx library not loaded, falling back to legacy export");
+                exportToWordLibraryLess(allCases, filename);
+                return;
+            }
+            
+            try {
+                showNotification('Generating document...', 'info');
+                const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, SectionType, Table, TableRow, TableCell, WidthType } = docxLib;
+
+                const children = [
+                    new Paragraph({
+                        text: "LEGAL CASE REPOSITORY - CASE BRIEFS",
+                        heading: HeadingLevel.TITLE,
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 400 }
+                    }),
+                    new Paragraph({
+                        text: `Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 800 }
+                    })
+                ];
+ 
+                filteredForExport.forEach((item, index) => {
+                    const combinedTopic = [item.provisionTopic, item.articleCited, item.provision]
+                        .filter(val => val && String(val).trim() !== '')
+                        .map(val => String(val).trim())
+                        .join(' | ') || '—';
+
+                    children.push(
+                        new Paragraph({
+                            text: `${index + 1}. ${item.caseNameCitation || item.title || 'Untitled Case'}`,
+                            heading: HeadingLevel.HEADING_1,
+                            spacing: { before: 400, after: 200 },
+                            pageBreakBefore: index > 0
+                        }),
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            rows: [
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Petitioner", bold: true })] }), new TableCell({ children: [new Paragraph(item.petitioner || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Respondent", bold: true })] }), new TableCell({ children: [new Paragraph(item.respondent || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Provisions", bold: true })] }), new TableCell({ children: [new Paragraph(item.provisions || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Topic & Article", bold: true })] }), new TableCell({ children: [new Paragraph(combinedTopic)] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Facts", bold: true })] }), new TableCell({ children: [new Paragraph(item.facts || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Issue (Succession)", bold: true })] }), new TableCell({ children: [new Paragraph(item.issueSuccession || item.issues || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "RTC Decision", bold: true })] }), new TableCell({ children: [new Paragraph(item.rtcDecision || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "CA Decision", bold: true })] }), new TableCell({ children: [new Paragraph(item.caDecision || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "SC Ruling", bold: true })] }), new TableCell({ children: [new Paragraph(item.scRuling || item.ruling || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Rationale / Basis", bold: true })] }), new TableCell({ children: [new Paragraph(item.rationaleBasis || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Simple Explanation", bold: true })] }), new TableCell({ children: [new Paragraph(item.simpleExplanation || "—")] }) ] }),
+                                new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Full Digest", bold: true })] }), new TableCell({ children: [new Paragraph(item.fullDigest || item.digest || "—")] }) ] }),
+                            ]
+                        })
+                    );
+                });
+
+                const doc = new Document({
+                    sections: [{
+                        properties: { type: SectionType.CONTINUOUS },
+                        children: children
+                    }]
+                });
+
+                const blob = await Packer.toBlob(doc);
+                const saveAs = window.saveAs || ((b, n) => {
+                    const url = URL.createObjectURL(b);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = n;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+                saveAs(blob, `legal_cases_export_${new Date().toISOString().split('T')[0]}.docx`);
+                showNotification('Docs Exported successfully.');
+            } catch (error) {
+                console.error("Export error:", error);
+                showNotification('Error exporting Docs: ' + error.message);
+            }
+        });
+
+        // Clear Database
+        clearBtn.addEventListener('click', () => {
+            showConfirm('Are you sure you want to clear the entire database? This cannot be undone.', async () => {
+                try {
+                    const batch = writeBatch(db);
+                    allCases.forEach(c => {
+                        batch.delete(doc(db, "cases", c.id));
+                    });
+                    await batch.commit();
+                    showNotification('Database cleared successfully.');
+                } catch (error) {
+                    showNotification('Error clearing database: ' + error.message);
+                }
+            });
+        });
+
+        // Import
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const content = event.target.result;
+                    let data = [];
+                    
+                    if (file.name.endsWith('.json')) {
+                        data = JSON.parse(content);
+                    } else if (file.name.endsWith('.csv')) {
+                        const lines = content.split('\n');
+                        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                        data = lines.slice(1).filter(l => l.trim()).map(line => {
+                            const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+                            const obj = {};
+                            headers.forEach((h, i) => {
+                                const header = h.toLowerCase();
+                                if (header.includes('case') || header.includes('title')) obj.caseNameCitation = values[i];
+                                if (header.includes('provision') || header.includes('topic')) obj.provisionTopic = values[i];
+                                if (header.includes('issue')) obj.issueSuccession = values[i];
+                                if (header.includes('ruling')) obj.scRuling = values[i];
+                                if (header.includes('rationale')) obj.rationaleBasis = values[i];
+                                if (header.includes('petitioner')) obj.petitioner = values[i];
+                                if (header.includes('respondent')) obj.respondent = values[i];
+                                if (header.includes('explanation')) obj.simpleExplanation = values[i];
+                            });
+                            return obj;
+                        });
+                    }
+
+                    if (!Array.isArray(data)) throw new Error('Invalid data format');
+
+                    const batch = writeBatch(db);
+                    data.forEach(item => {
+                        const newDoc = doc(collection(db, "cases"));
+                        batch.set(newDoc, {
+                            ...item,
+                            createdAt: serverTimestamp(),
+                            updatedAt: serverTimestamp()
+                        });
+                    });
+                    await batch.commit();
+                    showNotification(`Successfully imported ${data.length} cases.`);
+                } catch (error) {
+                    showNotification('Error importing data: ' + error.message);
+                }
+                fileInput.value = '';
+            };
+            reader.readAsText(file);
+        });
+
+        function render() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedProvision = provisionFilter.value;
+            const sort = sortOrder.value;
+
+            let filtered = allCases.filter(c => {
+                const title = (c.caseNameCitation || c.title || '').toLowerCase();
+                const issues = (c.issueSuccession || c.issues || '').toLowerCase();
+                const provision = (c.provisionTopic || c.provision || '').toLowerCase();
+                const article = (c.articleCited || '').toLowerCase();
+                const provisionsField = (c.provisions || '').toLowerCase();
+                
+                const matchesSearch = title.includes(searchTerm) || 
+                                     issues.includes(searchTerm) ||
+                                     provision.includes(searchTerm) ||
+                                     article.includes(searchTerm) ||
+                                     provisionsField.includes(searchTerm);
+                const matchesProvision = selectedProvision === 'All Provisions' || 
+                                       (c.provisionTopic === selectedProvision || 
+                                        c.articleCited === selectedProvision || 
+                                        c.provision === selectedProvision || 
+                                        c.provisions === selectedProvision);
+                return matchesSearch && matchesProvision;
+            });
+
+            // Sorting
+            if (sort === 'oldest') {
+                filtered.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            } else if (sort === 'alphabetical') {
+                filtered.sort((a, b) => (a.caseNameCitation || a.title || '').localeCompare(b.caseNameCitation || b.title || ''));
+            } else {
+                filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            }
+
+            filteredCount = filtered.length;
+
+            if (allCases.length === 0) {
+                caseListContainer.classList.add('hidden');
+                noResultsEl.classList.remove('hidden');
+                noResultsEl.innerHTML = `
+                    <div class="flex flex-col items-center gap-4">
+                        <p class="text-gray-500">The database is currently empty.</p>
+                        <p class="text-xs text-gray-400">Click "Import" to upload your cases.</p>
+                    </div>
+                `;
+            } else if (filtered.length === 0) {
+                caseListContainer.classList.add('hidden');
+                noResultsEl.classList.remove('hidden');
+                noResultsEl.innerHTML = `<p class="text-gray-500">No cases found matching your criteria.</p>`;
+            } else {
+                caseListContainer.classList.remove('hidden');
+                noResultsEl.classList.add('hidden');
+
+                // Pagination logic
+                const totalItems = filtered.length;
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+                const paginatedData = filtered.slice(startIndex, endIndex);
+
+                // Update Pagination UI
+                document.getElementById('paginationInfo').textContent = `${totalItems === 0 ? 0 : startIndex + 1} to ${endIndex} of ${totalItems}`;
+                
+                const prevPageBtn = document.getElementById('prevPage');
+                const nextPageBtn = document.getElementById('nextPage');
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+                const pageNumbersEl = document.getElementById('pageNumbers');
+                pageNumbersEl.innerHTML = '';
+                
+                // Simple page number rendering (limit to 5 pages around current)
+                let startPage = Math.max(1, currentPage - 2);
+                let endPage = Math.min(totalPages, startPage + 4);
+                if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+
+                for (let i = startPage; i <= endPage; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${i === currentPage ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`;
+                    btn.textContent = i;
+                    btn.onclick = () => {
+                        currentPage = i;
+                        render();
+                    };
+                    pageNumbersEl.appendChild(btn);
+                }
+
+                caseListEl.innerHTML = paginatedData.map((c, index) => {
+                    const combinedTopic = [c.provisionTopic, c.articleCited, c.provision]
+                        .filter(val => val && String(val).trim() !== '')
+                        .map(val => String(val).trim())
+                        .join(' | ') || '—';
+                    
+                    return `
+                        <tr class="hover:bg-gray-50/50 transition-colors cursor-pointer group" onclick="openModal('${c.id}')">
+                            <td class="px-6 py-4 text-sm font-medium text-gray-400">${startIndex + index + 1}</td>
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-900">${c.caseNameCitation || c.title || 'Untitled Case'}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">${combinedTopic}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600 line-clamp-2 max-w-xs">${c.scRuling || c.ruling || '—'}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 italic line-clamp-2 max-w-xs">${c.simpleExplanation || '—'}</td>
+                            <td class="px-6 py-4 text-right">
+                                <button class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm">
+                                    Full Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                lucide.createIcons();
+            }
+        }
+
+        window.openModal = (id) => {
+            const item = allCases.find(c => c.id === id);
+            if (!item) return;
+            console.log("Opening modal. Current user:", currentUser?.email);
+            selectedCase = item;
+            isEditing = false;
+            editedCase = { ...item };
+            
+            renderModal();
+            caseModal.classList.remove('hidden');
+        };
+
+        function renderModal() {
+            const item = isEditing ? editedCase : selectedCase;
+            
+            // Update Title
+            if (isEditing) {
+                modalTitle.innerHTML = `
+                    <input type="text" id="edit-caseNameCitation" value="${item.caseNameCitation || item.title || ''}" 
+                        class="w-full text-xl font-bold text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-1 focus:ring-2 focus:ring-black outline-none"
+                        oninput="updateEditedField('caseNameCitation', this.value)">
+                `;
+            } else {
+                modalTitle.textContent = item.caseNameCitation || item.title || 'Untitled Case';
+            }
+
+            // Update Action Buttons
+            modalActionButtons.innerHTML = '';
+            const isAuthorized = currentUser && currentUser.email === 'ssaclausolaw@gmail.com';
+
+            if (!isEditing) {
+                // Show Edit button if authorized admin
+                if (isAuthorized) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all text-xs font-semibold shadow-sm";
+                    editBtn.innerHTML = `<i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Edit`;
+                    editBtn.onclick = () => { isEditing = true; renderModal(); };
+                    modalActionButtons.appendChild(editBtn);
+                } else if (!currentUser) {
+                    // Optional: Show a hint that login is required to edit
+                    const loginHint = document.createElement('span');
+                    loginHint.className = "text-[10px] text-gray-400 italic mr-2";
+                    loginHint.textContent = "Login to edit";
+                    modalActionButtons.appendChild(loginHint);
+                }
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = "flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl hover:bg-gray-800 transition-all text-xs font-semibold shadow-sm";
+                downloadBtn.innerHTML = `<i data-lucide="download" class="w-3.5 h-3.5"></i> Download`;
+                downloadBtn.onclick = downloadCurrentCase;
+                modalActionButtons.appendChild(downloadBtn);
+            } else {
+                const saveBtn = document.createElement('button');
+                saveBtn.className = "flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all text-xs font-semibold shadow-sm";
+                saveBtn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i> Save`;
+                saveBtn.onclick = saveEditedCase;
+                modalActionButtons.appendChild(saveBtn);
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = "flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all text-xs font-semibold shadow-sm";
+                cancelBtn.innerHTML = `<i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Cancel`;
+                cancelBtn.onclick = () => { isEditing = false; editedCase = { ...selectedCase }; renderModal(); };
+                modalActionButtons.appendChild(cancelBtn);
+            }
+
+            // Update Content
+            const combinedTopic = [item.provisionTopic, item.articleCited, item.provision]
+                .filter(val => val && String(val).trim() !== '')
+                .map(val => String(val).trim())
+                .join(' | ') || '—';
+
+            modalContent.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-1">Petitioner</span>
+                        ${isEditing ? `<input type="text" value="${item.petitioner || ''}" class="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('petitioner', this.value)">` : `<p class="text-sm font-medium text-gray-900">${item.petitioner || '—'}</p>`}
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-1">Respondent</span>
+                        ${isEditing ? `<input type="text" value="${item.respondent || ''}" class="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('respondent', this.value)">` : `<p class="text-sm font-medium text-gray-900">${item.respondent || '—'}</p>`}
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-1">Provisions</span>
+                        ${isEditing ? `<input type="text" value="${item.provisions || ''}" class="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('provisions', this.value)">` : `<p class="text-sm font-medium text-gray-900">${item.provisions || '—'}</p>`}
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-1">Topic & Article Cited</span>
+                        ${isEditing ? `
+                            <div class="space-y-2">
+                                <input type="text" placeholder="Topic" value="${item.provisionTopic || ''}" class="w-full text-xs font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('provisionTopic', this.value)">
+                                <input type="text" placeholder="Article Cited" value="${item.articleCited || ''}" class="w-full text-xs font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('articleCited', this.value)">
+                            </div>
+                        ` : `<p class="text-sm font-medium text-gray-900">${combinedTopic}</p>`}
+                    </div>
+                </div>
+
+                <section>
+                    <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <div class="w-1 h-4 bg-black rounded-full"></div>
+                        Facts
+                    </h3>
+                    <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                        ${isEditing ? `<textarea rows="6" class="w-full text-sm text-gray-700 leading-relaxed bg-white border border-gray-200 rounded-lg p-3 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('facts', this.value)">${item.facts || ''}</textarea>` : `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${item.facts || 'No facts available.'}</p>`}
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <div class="w-1 h-4 bg-black rounded-full"></div>
+                        Issue (Succession)
+                    </h3>
+                    <div class="p-5 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+                        ${isEditing ? `<textarea rows="3" class="w-full text-sm text-indigo-900 leading-relaxed font-medium bg-white border border-indigo-200 rounded-lg p-3 outline-none focus:ring-1 focus:ring-indigo-500" oninput="updateEditedField('issueSuccession', this.value)">${item.issueSuccession || item.issues || ''}</textarea>` : `<p class="text-sm text-indigo-900 leading-relaxed font-medium">${item.issueSuccession || item.issues || 'No issue described.'}</p>`}
+                    </div>
+                </section>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-5 border border-gray-100 rounded-2xl">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">RTC Decision</span>
+                        ${isEditing ? `<textarea rows="2" class="w-full text-sm text-gray-600 leading-relaxed bg-white border border-gray-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('rtcDecision', this.value)">${item.rtcDecision || ''}</textarea>` : `<p class="text-sm text-gray-600 leading-relaxed">${item.rtcDecision || '—'}</p>`}
+                    </div>
+                    <div class="p-5 border border-gray-100 rounded-2xl">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">CA Decision</span>
+                        ${isEditing ? `<textarea rows="2" class="w-full text-sm text-gray-600 leading-relaxed bg-white border border-gray-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('caDecision', this.value)">${item.caDecision || ''}</textarea>` : `<p class="text-sm text-gray-600 leading-relaxed">${item.caDecision || '—'}</p>`}
+                    </div>
+                    <div class="p-5 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-600 block mb-2">SC Ruling</span>
+                        ${isEditing ? `<textarea rows="2" class="w-full text-sm text-emerald-900 font-medium leading-relaxed bg-white border border-emerald-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-emerald-500" oninput="updateEditedField('scRuling', this.value)">${item.scRuling || item.ruling || ''}</textarea>` : `<p class="text-sm text-emerald-900 font-medium leading-relaxed">${item.scRuling || item.ruling || '—'}</p>`}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <section>
+                        <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <div class="w-1 h-4 bg-black rounded-full"></div>
+                            Rationale / Civil Code Basis
+                        </h3>
+                        <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                            ${isEditing ? `<textarea rows="4" class="w-full text-sm text-gray-700 leading-relaxed bg-white border border-gray-200 rounded-lg p-3 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('rationaleBasis', this.value)">${item.rationaleBasis || ''}</textarea>` : `<p class="text-sm text-gray-700 leading-relaxed">${item.rationaleBasis || '—'}</p>`}
+                        </div>
+                    </section>
+                    <section>
+                        <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <div class="w-1 h-4 bg-black rounded-full"></div>
+                            Simple Explanation
+                        </h3>
+                        <div class="p-5 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                            ${isEditing ? `<textarea rows="4" class="w-full text-sm text-amber-900 leading-relaxed italic bg-white border border-amber-200 rounded-lg p-3 outline-none focus:ring-1 focus:ring-amber-500" oninput="updateEditedField('simpleExplanation', this.value)">${item.simpleExplanation || ''}</textarea>` : `<p class="text-sm text-amber-900 leading-relaxed italic">${item.simpleExplanation || '—'}</p>`}
+                        </div>
+                    </section>
+                </div>
+
+                <section>
+                    <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <div class="w-1 h-4 bg-black rounded-full"></div>
+                        Full Digest
+                    </h3>
+                    <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            ${isEditing ? `<textarea rows="10" class="w-full text-sm text-gray-700 leading-relaxed bg-white border border-gray-200 rounded-lg p-4 outline-none focus:ring-1 focus:ring-black" oninput="updateEditedField('fullDigest', this.value)">${item.fullDigest || item.digest || ''}</textarea>` : (item.fullDigest || item.digest || 'No digest available.')}
+                        </div>
+                    </div>
+                </section>
+            `;
+
+            // Update Footer
+            modalFooter.innerHTML = '';
+            if (isEditing) {
+                const discardBtn = document.createElement('button');
+                discardBtn.className = "px-6 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors";
+                discardBtn.textContent = "Discard Changes";
+                discardBtn.onclick = () => { isEditing = false; editedCase = { ...selectedCase }; renderModal(); };
+                modalFooter.appendChild(discardBtn);
+
+                const saveChangesBtn = document.createElement('button');
+                saveChangesBtn.className = "px-6 py-2 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-sm";
+                saveChangesBtn.textContent = "Save Changes";
+                saveChangesBtn.onclick = saveEditedCase;
+                modalFooter.appendChild(saveChangesBtn);
+            } else {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = "px-6 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors";
+                closeBtn.textContent = "Close";
+                closeBtn.onclick = closeModal;
+                modalFooter.appendChild(closeBtn);
+            }
+            
+            lucide.createIcons();
+        }
+
+        window.updateEditedField = (field, value) => {
+            if (editedCase) {
+                editedCase[field] = value;
+            }
+        };
+
+        async function saveEditedCase() {
+            if (!editedCase || !selectedCase) return;
+            
+            try {
+                showNotification('Saving changes...', 'info');
+                const caseRef = doc(db, "cases", selectedCase.id);
+                
+                const updateData = {
+                    ...editedCase,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser?.email || 'anonymous'
+                };
+                delete updateData.id; // Don't save ID field into document data
+
+                await setDoc(caseRef, updateData, { merge: true });
+                
+                selectedCase = { ...editedCase };
+                isEditing = false;
+                showNotification('Changes saved successfully.', 'success');
+                renderModal();
+            } catch (error) {
+                console.error("Save error:", error);
+                showNotification('Error saving changes: ' + error.message);
+            }
+        }
+
+        const closeModal = () => {
+            caseModal.classList.add('hidden');
+            selectedCase = null;
+            isEditing = false;
+            editedCase = null;
+        };
+
+        modalClose.addEventListener('click', closeModal);
+        caseModal.addEventListener('click', (e) => {
+            if (e.target === caseModal) closeModal();
+        });
+
+        async function downloadCurrentCase() {
+            if (!selectedCase) return;
+            const item = selectedCase;
+            const filename = (item.caseNameCitation || item.title || 'Case_Details').replace(/[^a-z0-9]/gi, '_').substring(0, 50);
+            
+            const docxLib = window.docx || (typeof docx !== 'undefined' ? docx : null);
+            
+            if (!docxLib) {
+                console.warn("docx library not loaded, falling back to legacy export for single case");
+                exportToWordLibraryLess([item], filename);
+                return;
+            }
+
+            try {
+                showNotification('Generating document...', 'info');
+                const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, SectionType, Table, TableRow, TableCell, WidthType } = docxLib;
+
+                const combinedTopic = [item.provisionTopic, item.articleCited, item.provision]
+                    .filter(val => val && String(val).trim() !== '')
+                    .map(val => String(val).trim())
+                    .join(' | ');
+
+                const doc = new Document({
+                    sections: [{
+                        properties: { type: SectionType.CONTINUOUS },
+                        children: [
+                            new Paragraph({
+                                text: `CASE BRIEF: ${item.caseNameCitation || item.title || 'Untitled Case'}`,
+                                heading: HeadingLevel.TITLE,
+                                alignment: AlignmentType.CENTER,
+                                spacing: { after: 400 }
+                            }),
+                            new Table({
+                                width: { size: 100, type: WidthType.PERCENTAGE },
+                                rows: [
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Petitioner", bold: true })] }), new TableCell({ children: [new Paragraph(item.petitioner || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Respondent", bold: true })] }), new TableCell({ children: [new Paragraph(item.respondent || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Provisions", bold: true })] }), new TableCell({ children: [new Paragraph(item.provisions || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Topic & Article", bold: true })] }), new TableCell({ children: [new Paragraph(combinedTopic)] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Facts", bold: true })] }), new TableCell({ children: [new Paragraph(item.facts || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Issue (Succession)", bold: true })] }), new TableCell({ children: [new Paragraph(item.issueSuccession || item.issues || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "RTC Decision", bold: true })] }), new TableCell({ children: [new Paragraph(item.rtcDecision || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "CA Decision", bold: true })] }), new TableCell({ children: [new Paragraph(item.caDecision || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "SC Ruling", bold: true })] }), new TableCell({ children: [new Paragraph(item.scRuling || item.ruling || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Rationale / Basis", bold: true })] }), new TableCell({ children: [new Paragraph(item.rationaleBasis || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Simple Explanation", bold: true })] }), new TableCell({ children: [new Paragraph(item.simpleExplanation || "—")] }) ] }),
+                                    new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: "Full Digest", bold: true })] }), new TableCell({ children: [new Paragraph(item.fullDigest || item.digest || "—")] }) ] }),
+                                ]
+                            })
+                        ]
+                    }]
+                });
+
+                const blob = await Packer.toBlob(doc);
+                const saveAs = window.saveAs || ((b, n) => {
+                    const url = URL.createObjectURL(b);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = n;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+                saveAs(blob, `${(item.caseNameCitation || item.title || 'case').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_brief.docx`);
+                showNotification('Doc Downloaded successfully.');
+            } catch (error) {
+                console.error("Download error:", error);
+                showNotification('Error generating Doc: ' + error.message);
+            }
+        }
+
+        // Pagination Event Listeners
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                render();
+            }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', () => {
+            const totalPages = Math.ceil(filteredCount / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                render();
+            }
+        });
+
+        document.getElementById('rowsPerPage').addEventListener('change', (e) => {
+            itemsPerPage = parseInt(e.target.value);
+            currentPage = 1;
+            render();
+        });
+
+        // Event Listeners
+        searchInput.addEventListener('input', () => {
+            currentPage = 1;
+            render();
+        });
+        provisionFilter.addEventListener('change', () => {
+            currentPage = 1;
+            render();
+        });
+        sortOrder.addEventListener('change', () => {
+            currentPage = 1;
+            render();
+        });
+
+        // Initialize Lucide
+        lucide.createIcons();
+    </script>
+</body>
+</html>
